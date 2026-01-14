@@ -1,4 +1,4 @@
-# Food Delivery System
+# raju-gari-kitchen
 
 High-performance, low-latency food delivery system designed for 50-500 concurrent users.
 
@@ -99,5 +99,3 @@ See `backend/README.md` for full API reference.
 ## License
 
 MIT
-# raju-gari-kitchen
-# raju-gari-kitchen
