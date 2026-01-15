@@ -161,23 +161,21 @@ func setupRoutes(app *fiber.App, h *handlers.Handlers) {
 	api.Post("/auth/verify-otp", h.VerifyOTP)
 
 	// Menu routes (public read, admin write)
-	menu := api.Group("/menu")
-	menu.Get("/", h.GetMenu)
-	menu.Get("/:id", h.GetMenuItem)
+	// Register directly on API group without creating a subgroup
+	api.Get("/menu", h.GetMenu)
+	api.Get("/menu/:id", h.GetMenuItem)
 
 	// Protected routes (require authentication)
 	// Using JWT middleware for authentication
-	protected := api.Group("/", h.AuthMiddleware)
-
-	// Order routes
-	orders := protected.Group("/orders")
+	// Use specific paths instead of "/" to avoid catching public routes
+	orders := api.Group("/orders", h.AuthMiddleware)
 	orders.Post("/create", h.CreateOrder)
 	orders.Get("/", h.GetUserOrders)
 	orders.Get("/:id", h.GetOrder)
 	orders.Post("/verify", h.VerifyPayment)
 
 	// Admin routes (require admin role)
-	admin := protected.Group("/admin", h.AdminMiddleware)
+	admin := api.Group("/admin", h.AuthMiddleware, h.AdminMiddleware)
 	admin.Post("/menu", h.CreateMenuItem)
 	admin.Put("/menu/:id", h.UpdateMenuItem)
 	admin.Delete("/menu/:id", h.DeleteMenuItem)
