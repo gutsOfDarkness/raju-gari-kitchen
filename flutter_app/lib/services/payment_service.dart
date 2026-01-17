@@ -1,165 +1,251 @@
-import 'package:flutter/material.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
-import '../models/order.dart';
-import 'api_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/menu_item.dart';
+import '../models/cart_item.dart';
+import '../services/api_service.dart';
+import '../services/logger_service.dart';
 
-/// Payment service handling Razorpay integration.
-/// CRITICAL: Never assume payment success from client callback alone.
-/// Always verify with backend using signature verification.
-class PaymentService {
-  final ApiService _apiService;
-  late Razorpay _razorpay;
 
-  // Callbacks for payment events
-  Function(PaymentSuccessResponse)? _onSuccess;
-  Function(PaymentFailureResponse)? _onFailure;
-  Function(ExternalWalletResponse)? _onExternalWallet;
+/// Cart state containing items and loading/error status
+class CartState {
+final List<CartItem> items;
+final bool isLoading;
+final String? error;
 
-  // Store order details for verification
-  String? _currentOrderId;
 
-  PaymentService({required ApiService apiService}) : _apiService = apiService {
-    _razorpay = Razorpay();
-    _setupEventListeners();
-  }
+const CartState({
+this.items = const [],
+this.isLoading = false,
+this.error,
+});
 
-  /// Setup Razorpay event listeners
-  void _setupEventListeners() {
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-  }
 
-  /// Handle successful payment callback from Razorpay SDK.
-  /// IMPORTANT: This does NOT mean payment is confirmed!
-  /// We must verify with our backend using the signature.
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    debugPrint('Razorpay success callback received');
-    debugPrint('Payment ID: ${response.paymentId}');
-    debugPrint('Order ID: ${response.orderId}');
-    debugPrint('Signature: ${response.signature}');
+/// Total cart amount in paisa
+int get totalAmount => items.fold(0, (sum, item) => sum + item.subtotal);
 
-    if (_onSuccess != null) {
-      _onSuccess!(response);
-    }
-  }
 
-  /// Handle payment failure
-  void _handlePaymentError(PaymentFailureResponse response) {
-    debugPrint('Razorpay error: ${response.code} - ${response.message}');
+/// Formatted total string
+String get formattedTotal => 'Rs.${(totalAmount / 100.0).toStringAsFixed(2)}';
 
-    if (_onFailure != null) {
-      _onFailure!(response);
-    }
-  }
 
-  /// Handle external wallet selection
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    debugPrint('External wallet: ${response.walletName}');
+/// Total item count
+int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
 
-    if (_onExternalWallet != null) {
-      _onExternalWallet!(response);
-    }
-  }
 
-  /// Start payment flow
-  /// Returns the created order response for tracking
-  Future<CreateOrderResponse> startPayment({
-    required CreateOrderResponse orderDetails,
-    required String userPhone,
-    required String userEmail,
-    required Function(PaymentSuccessResponse) onSuccess,
-    required Function(PaymentFailureResponse) onFailure,
-    Function(ExternalWalletResponse)? onExternalWallet,
-  }) async {
-    _currentOrderId = orderDetails.orderId;
-    _onSuccess = onSuccess;
-    _onFailure = onFailure;
-    _onExternalWallet = onExternalWallet;
+/// Check if cart is empty
+bool get isEmpty => items.isEmpty;
 
-    // Configure Razorpay checkout options
-    final options = {
-      'key': orderDetails.razorpayKeyId,
-      'amount': orderDetails.amount, // Amount in paisa
-      'currency': orderDetails.currency,
-      'name': orderDetails.name,
-      'description': orderDetails.description,
-      'order_id': orderDetails.razorpayOrderId,
-      'prefill': {
-        'contact': userPhone,
-        'email': userEmail,
-      },
-      'theme': {
-        'color': '#FF6B00', // Orange theme for food app
-      },
-      'retry': {
-        'enabled': true,
-        'max_count': 3,
-      },
-    };
 
-    try {
-      _razorpay.open(options);
-      return orderDetails;
-    } catch (e) {
-      debugPrint('Error opening Razorpay: $e');
-      rethrow;
-    }
-  }
-
-  /// Verify payment with backend.
-  /// CRITICAL: This is the only way to confirm payment success.
-  /// Client-side callback can be spoofed.
-  Future<PaymentVerificationResult> verifyPayment({
-    required String orderId,
-    required String razorpayOrderId,
-    required String razorpayPaymentId,
-    required String razorpaySignature,
-  }) async {
-    return await _apiService.verifyPayment(
-      orderId: orderId,
-      razorpayOrderId: razorpayOrderId,
-      razorpayPaymentId: razorpayPaymentId,
-      razorpaySignature: razorpaySignature,
-    );
-  }
-
-  /// Get current order ID being processed
-  String? get currentOrderId => _currentOrderId;
-
-  /// Clean up resources
-  void dispose() {
-    _razorpay.clear();
-  }
+/// Get quantity for a specific menu item
+int getQuantity(String menuItemId) {
+try {
+ final item = items.firstWhere((e) => e.menuItem.id == menuItemId);
+ LoggerService.debug('[CartState] getQuantity($menuItemId) = ${item.quantity}');
+ return item.quantity;
+} catch (e) {
+ LoggerService.debug('[CartState] getQuantity($menuItemId) = 0 (not in cart)');
+ return 0;
+}
 }
 
-/// Payment result after full verification flow
-class PaymentResult {
-  final bool success;
-  final String? orderId;
-  final String? message;
-  final String? errorCode;
 
-  const PaymentResult({
-    required this.success,
-    this.orderId,
-    this.message,
-    this.errorCode,
-  });
-
-  factory PaymentResult.success(String orderId, String message) {
-    return PaymentResult(
-      success: true,
-      orderId: orderId,
-      message: message,
-    );
-  }
-
-  factory PaymentResult.failure(String message, {String? errorCode}) {
-    return PaymentResult(
-      success: false,
-      message: message,
-      errorCode: errorCode,
-    );
-  }
+CartState copyWith({
+List<CartItem>? items,
+bool? isLoading,
+String? error,
+}) {
+return CartState(
+ items: items ?? this.items,
+ isLoading: isLoading ?? this.isLoading,
+ error: error,
+);
 }
+
+
+/// Debug string representation
+String toDebugString() {
+final itemsStr = items.map((i) => '${i.menuItem.name}(${i.quantity})').join(', ');
+return 'CartState{items: [$itemsStr], total: $formattedTotal, count: $itemCount}';
+}
+}
+
+
+/// Cart controller using Riverpod's Notifier pattern.
+/// Implements OPTIMISTIC UPDATES for smooth UX:
+/// 1. Update UI immediately on user action
+/// 2. Fire API call in background
+/// 3. Rollback state if API fails
+class CartNotifier extends Notifier<CartState> {
+// Store previous state for rollback on API failure
+CartState? _previousState;
+
+
+@override
+CartState build() {
+LoggerService.debug('[CartNotifier] build() called, initializing empty cart');
+return const CartState();
+}
+
+
+/// Add item to cart - LOCAL STATE ONLY
+void addItem(MenuItem menuItem, {int quantity = 1}) {
+LoggerService.info('[CartNotifier] addItem() called for ${menuItem.name} (id: ${menuItem.id}), quantity: $quantity');
+
+
+final currentItems = List<CartItem>.from(state.items);
+final existingIndex = currentItems.indexWhere(
+ (item) => item.menuItem.id == menuItem.id,
+);
+
+
+if (existingIndex >= 0) {
+ final existing = currentItems[existingIndex];
+ final newQuantity = existing.quantity + quantity;
+ currentItems[existingIndex] = existing.copyWith(quantity: newQuantity);
+ LoggerService.info('[CartNotifier] Incremented: ${menuItem.name} ${existing.quantity} -> $newQuantity');
+} else {
+ currentItems.add(CartItem(menuItem: menuItem, quantity: quantity));
+ LoggerService.info('[CartNotifier] Added new: ${menuItem.name}');
+}
+
+
+state = state.copyWith(items: currentItems, error: null);
+LoggerService.info('[CartNotifier] State updated: ${state.toDebugString()}');
+}
+
+
+/// Remove one quantity of item from cart - LOCAL STATE ONLY
+void removeItem(String menuItemId) {
+LoggerService.info('[CartNotifier] removeItem() called for id: $menuItemId');
+
+
+final currentItems = List<CartItem>.from(state.items);
+final existingIndex = currentItems.indexWhere(
+ (item) => item.menuItem.id == menuItemId,
+);
+
+
+if (existingIndex < 0) return;
+
+
+final existing = currentItems[existingIndex];
+if (existing.quantity > 1) {
+ final newQuantity = existing.quantity - 1;
+ currentItems[existingIndex] = existing.copyWith(quantity: newQuantity);
+ LoggerService.info('[CartNotifier] Decremented: ${existing.menuItem.name} ${existing.quantity} -> $newQuantity');
+} else {
+ currentItems.removeAt(existingIndex);
+ LoggerService.info('[CartNotifier] Removed: ${existing.menuItem.name}');
+}
+
+
+state = state.copyWith(items: currentItems, error: null);
+LoggerService.info('[CartNotifier] State updated: ${state.toDebugString()}');
+}
+
+
+/// Remove item completely from cart
+Future<void> removeItemCompletely(String menuItemId) async {
+LoggerService.info('[CartNotifier] removeItemCompletely() called for id: $menuItemId');
+_previousState = state;
+
+
+final currentItems = List<CartItem>.from(state.items);
+final removedItem = currentItems.where((item) => item.menuItem.id == menuItemId).firstOrNull;
+currentItems.removeWhere((item) => item.menuItem.id == menuItemId);
+
+
+if (removedItem != null) {
+ LoggerService.info('[CartNotifier] Removed item completely: ${removedItem.menuItem.name}');
+}
+
+
+state = state.copyWith(items: currentItems, error: null);
+LoggerService.debug('[CartNotifier] State updated. New state: ${state.toDebugString()}');
+}
+
+
+/// Update item quantity directly
+Future<void> updateQuantity(String menuItemId, int quantity) async {
+LoggerService.info('[CartNotifier] updateQuantity() called for id: $menuItemId, new quantity: $quantity');
+
+
+if (quantity <= 0) {
+ await removeItemCompletely(menuItemId);
+ return;
+}
+
+
+_previousState = state;
+
+
+final currentItems = List<CartItem>.from(state.items);
+final existingIndex = currentItems.indexWhere(
+ (item) => item.menuItem.id == menuItemId,
+);
+
+
+if (existingIndex >= 0) {
+ final existing = currentItems[existingIndex];
+ currentItems[existingIndex] = existing.copyWith(quantity: quantity);
+ state = state.copyWith(items: currentItems, error: null);
+ LoggerService.info('[CartNotifier] Updated quantity for ${existing.menuItem.name} to $quantity');
+}
+}
+
+
+/// Clear entire cart
+void clearCart() {
+LoggerService.info('[CartNotifier] clearCart() called');
+state = const CartState();
+LoggerService.debug('[CartNotifier] Cart cleared');
+}
+
+
+/// Set loading state
+void setLoading(bool loading) {
+LoggerService.debug('[CartNotifier] setLoading($loading)');
+state = state.copyWith(isLoading: loading);
+}
+
+
+/// Set error state
+void setError(String? error) {
+LoggerService.error('[CartNotifier] setError: $error');
+state = state.copyWith(error: error);
+}
+
+
+/// Rollback to previous state (used when API fails)
+void rollback(String errorMessage) {
+LoggerService.warning('[CartNotifier] Rolling back state due to: $errorMessage');
+if (_previousState != null) {
+ state = _previousState!.copyWith(error: errorMessage);
+}
+}
+}
+
+
+/// Provider for cart state
+final cartProvider = NotifierProvider<CartNotifier, CartState>(() {
+return CartNotifier();
+});
+
+
+/// Provider for API service
+final apiServiceProvider = Provider<ApiService>((ref) {
+// Allow overriding API URL via build arguments/environment
+const envUrl = String.fromEnvironment('API_URL');
+if (envUrl.isNotEmpty) {
+LoggerService.info('[ApiService] Using environment API_URL: $envUrl');
+return ApiService(baseUrl: envUrl);
+}
+
+
+// Use localhost as default for web
+const baseUrl = 'http://localhost:8080';
+LoggerService.info('[ApiService] Using API URL: $baseUrl');
+return ApiService(baseUrl: baseUrl);
+});
+
+
+

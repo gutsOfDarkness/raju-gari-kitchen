@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../providers/cart_provider.dart';
 import '../services/payment_service.dart';
 import '../services/api_service.dart';
