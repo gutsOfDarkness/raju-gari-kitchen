@@ -50,7 +50,7 @@ class FoodDeliveryApp extends StatelessWidget {
           backgroundColor: Colors.black,
           surfaceTintColor: Colors.transparent,
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E1E1E),
           elevation: 0,
           shape: RoundedRectangleBorder(

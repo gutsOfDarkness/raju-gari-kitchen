@@ -257,3 +257,33 @@ class AuthResult {
     required this.expiresAt,
   });
 }
+
+/// Response from create order API
+class CreateOrderResponse {
+  final String backendOrderId;
+  final String razorpayOrderId;
+  final String keyId;
+  final int amount;
+  final String currency;
+  final String receipt;
+
+  CreateOrderResponse({
+    required this.backendOrderId,
+    required this.razorpayOrderId,
+    required this.keyId,
+    required this.amount,
+    required this.currency,
+    required this.receipt,
+  });
+
+  factory CreateOrderResponse.fromJson(Map<String, dynamic> json) {
+    return CreateOrderResponse(
+      backendOrderId: json['id'] as String,
+      razorpayOrderId: json['razorpay_order_id'] as String,
+      keyId: json['key_id'] as String,
+      amount: json['amount'] as int,
+      currency: json['currency'] as String,
+      receipt: json['receipt'] as String,
+    );
+  }
+}
