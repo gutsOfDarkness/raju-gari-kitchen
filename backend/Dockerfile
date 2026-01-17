@@ -7,8 +7,10 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Install dependencies for the final image
-RUN apk --no-cache add ca-certificates tzdata
+# Install dependencies for the final image using reliable mirror
+RUN sed -i 's/dl-cdn.alpinelinux.org/alpine.global.ssl.fastly.net/g' /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache ca-certificates tzdata
 
 # Copy source
 COPY . .

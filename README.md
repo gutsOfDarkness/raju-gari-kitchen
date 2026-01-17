@@ -1,101 +1,157 @@
-# raju-gari-kitchen
+# Raju Gari Kitchen
 
-High-performance, low-latency food delivery system designed for 50-500 concurrent users.
+A full-stack food delivery application featuring a Flutter web frontend and Go backend API.
 
-## Architecture
-
-**Modular Monolith** with Clean Architecture (Delivery → Usecase → Repository)
+## Project Structure
 
 ```
-MY_APP/
-├── backend/           # Go API server
-│   ├── cmd/api/       # Entry point
-│   ├── internal/      # Application code
-│   ├── pkg/           # Shared packages
-│   └── migrations/    # SQL migrations
-└── flutter_app/       # Mobile application
-    └── lib/           # Dart source code
+raju-gari-kitchen/
+  backend/           # Go API server (Fiber framework)
+  flutter_app/       # Flutter web application
+  docker-compose.yml # Container orchestration
 ```
+
+## Features
+
+- Menu browsing with category filtering
+- In-place cart management (add/remove items without navigation)
+- Razorpay payment integration
+- Order tracking and confirmation
+- Responsive design for desktop and mobile web
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|------------|
-| Backend | Go 1.22+ (Fiber) |
-| Database | PostgreSQL (pgx) |
-| Cache | Redis |
-| Logging | Uber Zap |
-| Payments | Razorpay |
-| Frontend | Flutter (Riverpod) |
+### Frontend
+- Flutter Web (Dart)
+- Riverpod for state management
+- Optimistic UI updates for smooth UX
 
-## Quick Start
+### Backend
+- Go with Fiber HTTP framework
+- PostgreSQL database
+- Redis caching
+- Structured JSON logging (slog)
 
-### 1. Database Setup
+## Local Development
 
-```bash
-# Start PostgreSQL & Redis (example with Docker)
-docker run -d --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 postgres:14
-docker run -d --name redis -p 6379:6379 redis:7
+### Prerequisites
+- Docker and Docker Compose
+- Flutter SDK (3.0+)
+- Go 1.22+
 
-# Create database
-createdb fooddelivery
-
-# Run migrations
-psql -d fooddelivery -f backend/migrations/001_initial_schema.sql
-```
-
-### 2. Backend Setup
+### Running with Docker
 
 ```bash
-cd backend
-cp .env.example .env
-# Edit .env with your credentials
+# Start all services
+docker-compose up -d
 
-go mod download
-go run cmd/api/main.go
+# View logs
+docker logs food_delivery_backend
+docker logs food_delivery_frontend
 ```
 
-### 3. Flutter App Setup
+Services will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
+- PostgreSQL: localhost:5432
+- Redis: localhost:6379
+
+### Running Frontend Locally (Development)
 
 ```bash
 cd flutter_app
 flutter pub get
-flutter run
+flutter run -d chrome
 ```
 
-## Key Features
+### Running Backend Locally
 
-### Payment Security
-- **Server-side price calculation** - Never trust client prices
-- **Idempotent order creation** - Prevents duplicate charges
-- **Webhook signature verification** - HMAC SHA256 validation
-- **Optimistic locking** - Prevents race conditions
+```bash
+cd backend
+go mod download
+go run cmd/api/main.go
+```
 
-### Performance
-- **Redis caching** - 1-hour TTL for menu items
-- **Connection pooling** - PostgreSQL pgx pool
-- **Structured logging** - JSON with request tracing
+## API Endpoints
 
-### Flutter UX
-- **Optimistic updates** - Instant UI feedback
-- **Payment verification** - Backend confirmation required
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /health | Health check |
+| GET | /api/v1/menu | Get all menu items |
+| GET | /api/v1/menu/:id | Get single menu item |
+| POST | /api/v1/orders/create | Create new order |
+| POST | /api/v1/orders/verify | Verify payment |
 
 ## Environment Variables
 
-```bash
-# Required for backend
-DATABASE_URL=postgres://user:pass@localhost:5432/fooddelivery
-REDIS_URL=redis://localhost:6379/0
-RAZORPAY_KEY_ID=rzp_test_xxx
-RAZORPAY_KEY_SECRET=xxx
-RAZORPAY_WEBHOOK_SECRET=xxx
-JWT_SECRET=your-secret-key
+### Backend
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| PORT | Server port | 8080 |
+| DATABASE_URL | PostgreSQL connection string | Required |
+| REDIS_URL | Redis connection string | Required |
+| RAZORPAY_KEY_ID | Razorpay API key | Required for payments |
+| RAZORPAY_KEY_SECRET | Razorpay secret | Required for payments |
+| JWT_SECRET | JWT signing secret | Required |
+| ALLOWED_ORIGINS | CORS allowed origins | * |
+
+### Frontend Build
+
+| Variable | Description |
+|----------|-------------|
+| API_URL | Backend API base URL |
+
+## Logging
+
+### Frontend Logging
+
+Logs are output to browser console. Open DevTools (F12) to view logs including:
+- Cart operations (add, remove, update)
+- Route navigation
+- API requests
+- Error traces
+
+### Backend Logging
+
+Structured JSON logs to stdout:
+
+```json
+{"time":"2026-01-17T12:00:00Z","level":"INFO","msg":"GetMenu request received","request_id":"abc-123"}
 ```
 
-## API Documentation
+Log levels: DEBUG, INFO, WARN, ERROR
 
-See `backend/README.md` for full API reference.
+## Deployment
+
+See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for detailed deployment instructions.
+
+## Troubleshooting
+
+### Cart not updating in-place
+
+1. Open browser DevTools console
+2. Click ADD button
+3. Check for log messages like:
+   - `[MenuItemCard] ADD button pressed for...`
+   - `[CartNotifier] addItem() called for...`
+   - `[CartNotifier] State updated. New state:...`
+
+If logs appear but UI does not update, the issue is with state binding.
+If no logs appear, check for JavaScript errors in console.
+
+### Images not loading
+
+- Ensure image files exist in `flutter_app/assets/images/`
+- Check `pubspec.yaml` has correct asset paths
+- For local assets, use path starting with `assets/images/`
+
+### Backend connection errors
+
+- Verify backend container is running: `docker ps`
+- Check backend logs: `docker logs food_delivery_backend`
+- Verify API URL matches frontend configuration
 
 ## License
 
-MIT
+MIT License

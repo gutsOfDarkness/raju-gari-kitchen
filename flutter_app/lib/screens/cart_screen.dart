@@ -48,11 +48,17 @@ class CartScreen extends ConsumerWidget {
                                   height: 60,
                                   color: Colors.grey.shade900,
                                   child: item.menuItem.imageUrl != null
-                                      ? Image.network(
-                                          item.menuItem.imageUrl!,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, color: Colors.orange),
-                                        )
+                                      ? (item.menuItem.imageUrl!.startsWith('http')
+                                          ? Image.network(
+                                              item.menuItem.imageUrl!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, color: Colors.orange),
+                                            )
+                                          : Image.asset(
+                                              item.menuItem.imageUrl!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, color: Colors.orange),
+                                            ))
                                       : const Icon(Icons.fastfood, color: Colors.orange),
                                 ),
                               ),

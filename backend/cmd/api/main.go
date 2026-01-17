@@ -25,10 +25,9 @@ import (
 )
 
 func main() {
-	// Initialize structured logger first - all subsequent logs will be JSON formatted
+	// Initialize Logger
+	logger.Init()
 	log := logger.NewLogger()
-	defer log.Sync() // Flush any buffered log entries on shutdown
-
 	log.Info("Starting Food Delivery API Server...")
 
 	// Load configuration from environment variables
@@ -36,6 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to load configuration", "error", err)
 	}
+	log.Info("Configuration loaded", "port", cfg.Port)
 
 	// Initialize PostgreSQL connection pool with auto-reconnect
 	// Using singleton pattern to ensure single connection pool across the app

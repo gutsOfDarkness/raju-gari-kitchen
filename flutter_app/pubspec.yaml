@@ -24,6 +24,9 @@ dependencies:
   
   # Video Player
   video_player: ^2.8.2
+  
+  # Logging
+  logger: ^2.0.0
 
 dev_dependencies:
   flutter_test:

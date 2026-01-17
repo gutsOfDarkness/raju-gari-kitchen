@@ -4,6 +4,7 @@ import '../models/menu_item.dart';
 import '../providers/cart_provider.dart';
 import '../widgets/video_header.dart';
 import '../widgets/menu_item_card.dart';
+import '../services/logger_service.dart';
 
 
 /// Provider for menu items with loading state
@@ -34,11 +35,13 @@ class MenuScreen extends ConsumerWidget {
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final expandedCategories = ref.watch(expandedCategoriesProvider);
 
+    // Log build to debug rebuild issues
+    LoggerService.debug('MenuScreen build called. Cart items: ${cartState.itemCount}');
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Raju Gari Kitchen v2.1', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Raju Gari Kitchen', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           // Cart button with badge
           Container(
@@ -312,6 +315,8 @@ class MenuScreen extends ConsumerWidget {
   Widget _buildBannerSection(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.only(bottom: 24),
+      // Temporarily replacing VideoHeader to debug black screen issue
+      // If this fixes it, the video player or codec is the issue.
       child: VideoHeader(
         videoAsset: 'assets/videos/promo.mp4',
         height: 350,

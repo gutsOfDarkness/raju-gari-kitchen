@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/menu_item.dart';
 import '../providers/cart_provider.dart';
+import '../services/logger_service.dart';
 
 class MenuItemCard extends ConsumerWidget {
   final MenuItem item;
@@ -17,21 +18,20 @@ class MenuItemCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cartState = ref.watch(cartProvider);
     final quantity = cartState.getQuantity(item.id);
+    
+    LoggerService.debug('[MenuItemCard] Building card for ${item.name}, current quantity: $quantity');
 
     return Card(
       margin: isGrid ? EdgeInsets.zero : const EdgeInsets.only(bottom: 16),
-      color: const Color(0xFF1E1E1E), // Explicit dark card color
+      color: const Color(0xFF1E1E1E),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: Colors.white10),
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {}, // Optional: Open details
-        child: isGrid 
+      child: isGrid 
         ? _buildGridLayout(context, ref, quantity)
-        : _buildListLayout(context, ref, quantity), // Default to List/Row layout
-      ),
+        : _buildListLayout(context, ref, quantity),
     );
   }
 
@@ -175,13 +175,30 @@ class MenuItemCard extends ConsumerWidget {
   }
 
   Widget _buildAddButton(BuildContext context, WidgetRef ref, int quantity) {
+     LoggerService.debug('[MenuItemCard] _buildAddButton called for ${item.name}, quantity: $quantity');
+     
      if (quantity == 0) {
        return SizedBox(
          height: 36,
          child: ElevatedButton(
            onPressed: () {
+             LoggerService.info('[MenuItemCard] ADD button pressed for ${item.name} (id: ${item.id})');
+             LoggerService.debug('[MenuItemCard] Current cart state before add: ${ref.read(cartProvider).itemCount} items');
+             
              ref.read(cartProvider.notifier).addItem(item);
-             _showAddedSnackBar(context, item.name);
+             
+             LoggerService.info('[MenuItemCard] addItem() called, cart should update in-place');
+             
+             // Show a brief snackbar confirmation
+             ScaffoldMessenger.of(context).clearSnackBars();
+             ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(
+                 content: Text('${item.name} added to cart'),
+                 duration: const Duration(milliseconds: 800),
+                 behavior: SnackBarBehavior.floating,
+                 backgroundColor: Colors.green.shade700,
+               ),
+             );
            },
            style: ElevatedButton.styleFrom(
              backgroundColor: Colors.orange,
@@ -195,6 +212,8 @@ class MenuItemCard extends ConsumerWidget {
        );
      }
      
+     LoggerService.debug('[MenuItemCard] Showing quantity counter for ${item.name}: $quantity');
+     
      return Container(
        decoration: BoxDecoration(
          color: Colors.grey.shade900,
@@ -207,7 +226,10 @@ class MenuItemCard extends ConsumerWidget {
          children: [
            IconButton(
              icon: const Icon(Icons.remove, size: 16, color: Colors.white),
-             onPressed: () => ref.read(cartProvider.notifier).removeItem(item.id),
+             onPressed: () {
+               LoggerService.info('[MenuItemCard] REMOVE button pressed for ${item.name}');
+               ref.read(cartProvider.notifier).removeItem(item.id);
+             },
              padding: EdgeInsets.zero,
              constraints: const BoxConstraints(minWidth: 32),
            ),
@@ -220,7 +242,10 @@ class MenuItemCard extends ConsumerWidget {
            ),
            IconButton(
              icon: const Icon(Icons.add, size: 16, color: Colors.white),
-             onPressed: () => ref.read(cartProvider.notifier).addItem(item),
+             onPressed: () {
+               LoggerService.info('[MenuItemCard] INCREMENT button pressed for ${item.name}');
+               ref.read(cartProvider.notifier).addItem(item);
+             },
               padding: EdgeInsets.zero,
              constraints: const BoxConstraints(minWidth: 32),
            ),
@@ -234,18 +259,6 @@ class MenuItemCard extends ConsumerWidget {
       color: Colors.grey.shade900,
       child: const Center(
         child: Icon(Icons.restaurant_menu, color: Colors.white10, size: 32),
-      ),
-    );
-  }
-
-  void _showAddedSnackBar(BuildContext context, String itemName) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$itemName added to cart'),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green,
       ),
     );
   }

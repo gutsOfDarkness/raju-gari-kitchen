@@ -1,17 +1,26 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'screens/checkout_screen.dart';
 import 'screens/menu_screen.dart';
 import 'screens/cart_screen.dart';
+import 'screens/checkout_screen.dart';
 import 'screens/order_confirmation_screen.dart';
+import 'services/logger_service.dart';
 
 void main() {
-  runApp(
-    // Wrap with ProviderScope for Riverpod state management
-    const ProviderScope(
-      child: FoodDeliveryApp(),
-    ),
-  );
+  runZonedGuarded(() {
+    LoggerService.info('[App] Starting Raju Gari Kitchen application');
+    
+    FlutterError.onError = (FlutterErrorDetails details) {
+      LoggerService.error('[Flutter Error]', details.exception, details.stack);
+    };
+    
+    runApp(const ProviderScope(child: FoodDeliveryApp()));
+    
+    LoggerService.info('[App] Application initialized successfully');
+  }, (error, stack) {
+    LoggerService.error('[Uncaught Error]', error, stack);
+  });
 }
 
 /// Main application widget
@@ -20,6 +29,8 @@ class FoodDeliveryApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LoggerService.debug('[FoodDeliveryApp] build() called');
+    
     return MaterialApp(
       title: 'Food Delivery',
       debugShowCheckedModeBanner: false,
@@ -49,11 +60,37 @@ class FoodDeliveryApp extends StatelessWidget {
         ),
       ),
       initialRoute: '/',
-      routes: {
-        '/': (context) => const MenuScreen(),
-        '/cart': (context) => const CartScreen(),
-        '/checkout': (context) => const CheckoutScreen(),
-        '/order-confirmation': (context) => const OrderConfirmationScreen(),
+      onGenerateRoute: (settings) {
+        LoggerService.info('[Router] Navigating to: ${settings.name}');
+        
+        switch (settings.name) {
+          case '/':
+            return MaterialPageRoute(
+              builder: (context) => const MenuScreen(),
+              settings: settings,
+            );
+          case '/cart':
+            return MaterialPageRoute(
+              builder: (context) => const CartScreen(),
+              settings: settings,
+            );
+          case '/checkout':
+            return MaterialPageRoute(
+              builder: (context) => const CheckoutScreen(),
+              settings: settings,
+            );
+          case '/order-confirmation':
+            return MaterialPageRoute(
+              builder: (context) => const OrderConfirmationScreen(),
+              settings: settings,
+            );
+          default:
+            LoggerService.warning('[Router] Unknown route: ${settings.name}');
+            return MaterialPageRoute(
+              builder: (context) => const MenuScreen(),
+              settings: settings,
+            );
+        }
       },
     );
   }

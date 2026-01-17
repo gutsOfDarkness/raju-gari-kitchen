@@ -214,10 +214,13 @@ func (h *Handlers) VerifyOTP(c *fiber.Ctx) error {
 
 // GetMenu handles GET /menu
 func (h *Handlers) GetMenu(c *fiber.Ctx) error {
+	h.log.Info("GetMenu request received", "request_id", logger.GetRequestID(c))
 	menu, err := h.menuUsecase.GetMenu(c.Context())
 	if err != nil {
+		h.log.Error("Failed to fetch menu", "error", err, "request_id", logger.GetRequestID(c))
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to fetch menu")
 	}
+	h.log.Info("Menu fetched successfully", "count", len(menu.Items), "request_id", logger.GetRequestID(c))
 
 	return c.JSON(SuccessResponse{
 		Success: true,
