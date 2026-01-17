@@ -190,6 +190,12 @@ final cartProvider = NotifierProvider<CartNotifier, CartState>(() {
 
 /// Provider for API service
 final apiServiceProvider = Provider<ApiService>((ref) {
+  // Allow overriding API URL via build arguments/environment
+  const envUrl = String.fromEnvironment('API_URL');
+  if (envUrl.isNotEmpty) {
+    return ApiService(baseUrl: envUrl);
+  }
+
   // Get the host from the current window location
   // This allows the app to work on both desktop (localhost) and mobile (network IP)
   final host = html.window.location.hostname ?? 'localhost';

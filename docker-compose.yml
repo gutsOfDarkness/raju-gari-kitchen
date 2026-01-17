@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  migrator:
+    image: alpine:latest
+    container_name: food_delivery_migrator
+    depends_on:
+      db:
+        condition: service_healthy
+    command: /bin/sh -c "apk add --no-cache postgresql-client && /migrate.sh"
+    volumes:
+      - ./backend/migrate.sh:/migrate.sh
+      - ./backend/migrations:/migrations
+    env_file:
+      - .env
+    networks:
+      - food_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: food_delivery_backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - food_network
+
+  frontend:
+    build:
+      context: ./flutter_app
+      dockerfile: Dockerfile
+      args:
+        # Pass the backend URL to the build
+        - API_URL=http://localhost:8080
+    container_name: food_delivery_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - food_network
+
+  db:
+    image: postgres:14-alpine
+    container_name: food_delivery_db
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - food_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: food_delivery_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - food_network
+
+networks:
+  food_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
