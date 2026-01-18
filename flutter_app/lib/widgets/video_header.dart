@@ -91,7 +91,7 @@ class _VideoHeaderState extends State<VideoHeader> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                  Text(
-                   "Raju Gari Kitchen",
+                   "Crave Delivery",
                    style: TextStyle(
                      color: Colors.white,
                      fontSize: 36,

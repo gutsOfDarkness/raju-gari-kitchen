@@ -46,7 +46,7 @@ class MenuScreen extends ConsumerWidget {
    return Scaffold(
      backgroundColor: Colors.black,
      appBar: AppBar(
-       title: const Text('Raju Gari Kitchen', style: TextStyle(fontWeight: FontWeight.bold)),
+       title: const Text('Crave Delivery', style: TextStyle(fontWeight: FontWeight.bold)),
        actions: [
          // Cart button with badge - wrapped in Consumer to isolate rebuilds
          Consumer(
