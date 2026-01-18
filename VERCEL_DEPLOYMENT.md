@@ -21,7 +21,29 @@ For Vercel deployment, the backend can be deployed as serverless functions or ru
 
 ---
 
-## Option 1: Frontend-Only Deployment (Recommended)
+## Option 1: Automatic Builds (Recommended)
+
+This method allows you to push code to GitHub and have Vercel automatically build and deploy your Flutter app.
+
+### Step 1: Push Build Scripts
+
+Ensured `flutter_app/vercel.json` and `flutter_app/vercel_build.sh` are in your repository.
+
+### Step 2: Configure Vercel Project
+
+1. Import your Git repository in Vercel.
+2. Select **Framework Preset**: `Other`.
+3. Set **Root Directory** to `flutter_app` (if your app is in a subdirectory).
+4. **Build Command**: `bash vercel_build.sh` (should be auto-detected from `vercel.json`).
+5. **Output Directory**: `build/web` (should be auto-detected from `vercel.json`).
+6. Deploy!
+
+### How it works
+The `vercel_build.sh` script installs Flutter in the Vercel environment and builds your app on every push.
+
+---
+
+## Option 2: Frontend-Only Deployment (Manual/Static)
 
 Deploy the Flutter web app to Vercel and host the backend separately (Railway, Render, or Docker container).
 
