@@ -1,11 +1,11 @@
-# Raju Gari Kitchen
+# Crave Delivery
 
 A full-stack food delivery application featuring a Flutter web frontend and Go backend API.
 
 ## Project Structure
 
 ```
-raju-gari-kitchen/
+crave-delivery/
   backend/           # Go API server (Fiber framework)
   flutter_app/       # Flutter web application
   docker-compose.yml # Container orchestration

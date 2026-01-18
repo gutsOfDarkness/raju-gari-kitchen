@@ -1,6 +1,6 @@
-# Raju Gari Kitchen - Setup & Contribution Guide
+# Crave Delivery - Setup & Contribution Guide
 
-Welcome to the **Raju Gari Kitchen** project! This is a comprehensive food delivery application built with a **Go (Fiber)** backend and a **Flutter** frontend, orchestrating **PostgreSQL** and **Redis** for data management.
+Welcome to the **Crave Delivery** project! This is a comprehensive food delivery application built with a **Go (Fiber)** backend and a **Flutter** frontend, orchestrating **PostgreSQL** and **Redis** for data management.
 
 ## Quick Start (Docker)
 

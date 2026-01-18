@@ -9,7 +9,7 @@ import 'services/logger_service.dart';
 
 void main() {
   runZonedGuarded(() {
-    LoggerService.info('[App] Starting Raju Gari Kitchen application');
+    LoggerService.info('[App] Starting Crave Delivery application');
     
     FlutterError.onError = (FlutterErrorDetails details) {
       LoggerService.error('[Flutter Error]', details.exception, details.stack);

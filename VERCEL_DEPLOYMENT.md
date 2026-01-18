@@ -1,6 +1,6 @@
-# Vercel Deployment Guide for Raju Gari Kitchen
+# Vercel Deployment Guide for Crave Delivery
 
-This guide explains how to deploy the Raju Gari Kitchen food delivery application to Vercel.
+This guide explains how to deploy the Crave Delivery food delivery application to Vercel.
 
 ## Architecture Overview
 

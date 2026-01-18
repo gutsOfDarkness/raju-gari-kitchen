@@ -39,7 +39,7 @@ class PaymentService {
     var options = {
       'key': orderDetails.keyId,
       'amount': orderDetails.amount, // in the smallest currency sub-unit
-      'name': 'Raju Gari Kitchen',
+      'name': 'Crave Delivery',
       'description': 'Order #${orderDetails.receipt}',
       'order_id': orderDetails.razorpayOrderId,
       'prefill': {
