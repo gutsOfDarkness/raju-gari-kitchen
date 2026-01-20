@@ -1,0 +1,25 @@
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.lock
+*.log
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build and dependencies
+node_modules/
+dist/
+build/
+bin/
+api
