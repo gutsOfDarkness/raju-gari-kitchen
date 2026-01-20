@@ -23,13 +23,55 @@ const (
 
 // User represents a registered user in the system
 type User struct {
-	ID          uuid.UUID  `json:"id"`
-	PhoneNumber string     `json:"phone_number"`
-	Name        string     `json:"name"`
-	Email       string     `json:"email,omitempty"`
-	IsAdmin     bool       `json:"is_admin"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID            uuid.UUID  `json:"id"`
+	PhoneNumber   string     `json:"phone_number"`
+	Name          string     `json:"name"`
+	Email         string     `json:"email"`
+	PasswordHash  string     `json:"-"` // Never expose password hash in JSON
+	EmailVerified bool       `json:"email_verified"`
+	IsAdmin       bool       `json:"is_admin"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+// OTPPurpose represents the purpose of an OTP
+type OTPPurpose string
+
+const (
+	OTPPurposeLogin         OTPPurpose = "login"
+	OTPPurposeSignup        OTPPurpose = "signup"
+	OTPPurposePasswordReset OTPPurpose = "password_reset"
+	OTPPurposeEmailVerify   OTPPurpose = "email_verify"
+)
+
+// OTP represents a one-time password for verification
+type OTP struct {
+	ID           uuid.UUID   `json:"id"`
+	UserID       *uuid.UUID  `json:"user_id,omitempty"`
+	PhoneNumber  *string     `json:"phone_number,omitempty"`
+	Email        *string     `json:"email,omitempty"`
+	OTPCode      string      `json:"-"` // Never expose OTP in JSON
+	Purpose      OTPPurpose  `json:"purpose"`
+	ExpiresAt    time.Time   `json:"expires_at"`
+	IsVerified   bool        `json:"is_verified"`
+	VerifiedAt   *time.Time  `json:"verified_at,omitempty"`
+	Attempts     int         `json:"attempts"`
+	CreatedAt    time.Time   `json:"created_at"`
+}
+
+// Session represents an active user session
+type Session struct {
+	ID             uuid.UUID  `json:"id"`
+	UserID         uuid.UUID  `json:"user_id"`
+	TokenID        string     `json:"token_id"`
+	DeviceInfo     *string    `json:"device_info,omitempty"`
+	IPAddress      *string    `json:"ip_address,omitempty"`
+	UserAgent      *string    `json:"user_agent,omitempty"`
+	ExpiresAt      time.Time  `json:"expires_at"`
+	IsRevoked      bool       `json:"is_revoked"`
+	RevokedAt      *time.Time `json:"revoked_at,omitempty"`
+	LastActivityAt time.Time  `json:"last_activity_at"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 // MenuItem represents a food item available for ordering.
@@ -97,12 +139,4 @@ type CartItem struct {
 type Cart struct {
 	UserID uuid.UUID  `json:"user_id"`
 	Items  []CartItem `json:"items"`
-}
-
-// Session represents a user session stored in Redis
-type Session struct {
-	UserID    uuid.UUID `json:"user_id"`
-	Token     string    `json:"token"`
-	IsAdmin   bool      `json:"is_admin"`
-	ExpiresAt time.Time `json:"expires_at"`
 }

@@ -62,6 +62,9 @@ func main() {
 	paymentUsecase := usecase.NewPaymentUsecase(orderRepo, menuRepo, cfg.Razorpay, log)
 	orderUsecase := usecase.NewOrderUsecase(orderRepo, paymentUsecase, log)
 	userUsecase := usecase.NewUserUsecase(userRepo, log)
+	
+	// Set JWT configuration for user usecase
+	userUsecase.SetJWTConfig(cfg.JWTSecret, cfg.JWTExpiration)
 
 	// Initialize Fiber with optimized settings for low-latency
 	app := fiber.New(fiber.Config{
@@ -156,10 +159,12 @@ func setupRoutes(app *fiber.App, h *handlers.Handlers) {
 	// API v1 routes
 	api := app.Group("/api/v1")
 
-	// Public routes (no auth required)
-	api.Post("/auth/register", h.Register)
-	api.Post("/auth/login", h.Login)
-	api.Post("/auth/verify-otp", h.VerifyOTP)
+	// Authentication routes (no auth required)
+	auth := api.Group("/auth")
+	auth.Post("/register", h.Register)              // Email/password registration
+	auth.Post("/login/email", h.EmailLogin)         // Email/password login
+	auth.Post("/login/phone", h.SendOTP)            // Phone-based OTP login (send OTP)
+	auth.Post("/verify-otp", h.VerifyOTP)           // Verify OTP and get token
 
 	// Menu routes (public read, admin write)
 	// Register directly on API group without creating a subgroup

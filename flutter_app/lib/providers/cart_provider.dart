@@ -3,6 +3,7 @@ import '../models/menu_item.dart';
 import '../models/cart_item.dart';
 import '../services/api_service.dart';
 import '../services/logger_service.dart';
+import 'auth_provider.dart';
 
 
 /// Cart state containing items and loading/error status
@@ -224,24 +225,3 @@ class CartNotifier extends Notifier<CartState> {
 final cartProvider = NotifierProvider<CartNotifier, CartState>(() {
  return CartNotifier();
 });
-
-
-/// Provider for API service
-final apiServiceProvider = Provider<ApiService>((ref) {
- // Allow overriding API URL via build arguments/environment
- const envUrl = String.fromEnvironment('API_URL');
- if (envUrl.isNotEmpty) {
-   LoggerService.info('[ApiService] Using environment API_URL: $envUrl');
-   return ApiService(baseUrl: envUrl);
- }
-
-
- // Use localhost as default for web
- const baseUrl = 'http://localhost:8080';
- LoggerService.info('[ApiService] Using API URL: $baseUrl');
- return ApiService(baseUrl: baseUrl);
-});
-
-
-
-

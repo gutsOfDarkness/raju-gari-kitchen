@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/cart_provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/payment_service.dart';
 import '../services/api_service.dart';
 

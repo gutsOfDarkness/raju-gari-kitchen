@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/menu_item.dart';
 import '../providers/cart_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/video_header.dart';
 import '../widgets/menu_item_card.dart';
 
@@ -48,6 +49,76 @@ class MenuScreen extends ConsumerWidget {
      appBar: AppBar(
        title: const Text('Crave Delivery', style: TextStyle(fontWeight: FontWeight.bold)),
        actions: [
+         // Profile/Login button - wrapped in Consumer to isolate rebuilds
+         Consumer(
+           builder: (context, ref, child) {
+             final authState = ref.watch(authProvider);
+             return Container(
+               margin: const EdgeInsets.only(right: 8),
+               child: authState.isAuthenticated
+                   ? PopupMenuButton<String>(
+                       icon: CircleAvatar(
+                         backgroundColor: Colors.orange,
+                         child: Text(
+                           authState.name?.substring(0, 1).toUpperCase() ?? 'U',
+                           style: const TextStyle(
+                             color: Colors.black,
+                             fontWeight: FontWeight.bold,
+                           ),
+                         ),
+                       ),
+                       onSelected: (value) {
+                         if (value == 'logout') {
+                           ref.read(authProvider.notifier).logout();
+                         }
+                       },
+                       itemBuilder: (context) => [
+                         PopupMenuItem(
+                           enabled: false,
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text(
+                                 authState.name ?? 'User',
+                                 style: const TextStyle(
+                                   fontWeight: FontWeight.bold,
+                                   fontSize: 16,
+                                 ),
+                               ),
+                               Text(
+                                 authState.email ?? '',
+                                 style: const TextStyle(
+                                   fontSize: 12,
+                                   color: Colors.grey,
+                                 ),
+                               ),
+                             ],
+                           ),
+                         ),
+                         const PopupMenuDivider(),
+                         const PopupMenuItem(
+                           value: 'logout',
+                           child: Row(
+                             children: [
+                               Icon(Icons.logout, size: 20),
+                               SizedBox(width: 8),
+                               Text('Logout'),
+                             ],
+                           ),
+                         ),
+                       ],
+                     )
+                   : TextButton.icon(
+                       icon: const Icon(Icons.login, color: Colors.orange),
+                       label: const Text(
+                         'Login',
+                         style: TextStyle(color: Colors.orange),
+                       ),
+                       onPressed: () => Navigator.pushNamed(context, '/login'),
+                     ),
+             );
+           },
+         ),
          // Cart button with badge - wrapped in Consumer to isolate rebuilds
          Consumer(
            builder: (context, ref, child) {
@@ -282,7 +353,3 @@ class MenuScreen extends ConsumerWidget {
    );
  }
 }
-
-
-
-

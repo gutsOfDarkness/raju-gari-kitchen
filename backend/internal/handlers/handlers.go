@@ -134,15 +134,16 @@ func getUserID(c *fiber.Ctx) (uuid.UUID, error) {
 	return userID, nil
 }
 
-// Register handles POST /auth/register
+// Register handles POST /auth/register (email/password)
 func (h *Handlers) Register(c *fiber.Ctx) error {
 	var req usecase.RegisterRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	if req.PhoneNumber == "" || req.Name == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Phone number and name are required")
+	// Validate required fields
+	if req.Email == "" || req.Password == "" || req.Name == "" || req.PhoneNumber == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email, password, name, and phone number are required")
 	}
 
 	resp, err := h.userUsecase.Register(c.Context(), req)
@@ -150,6 +151,10 @@ func (h *Handlers) Register(c *fiber.Ctx) error {
 		if errors.Is(err, usecase.ErrUserExists) {
 			return fiber.NewError(fiber.StatusConflict, "User already exists")
 		}
+		if errors.Is(err, usecase.ErrWeakPassword) {
+			return fiber.NewError(fiber.StatusBadRequest, "Password must be at least 8 characters")
+		}
+		h.log.Error("Registration failed", "error", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Registration failed")
 	}
 
@@ -159,9 +164,38 @@ func (h *Handlers) Register(c *fiber.Ctx) error {
 	})
 }
 
-// Login handles POST /auth/login
-func (h *Handlers) Login(c *fiber.Ctx) error {
-	var req usecase.LoginRequest
+// EmailLogin handles POST /auth/login/email (email/password login)
+func (h *Handlers) EmailLogin(c *fiber.Ctx) error {
+	var req usecase.EmailLoginRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	if req.Email == "" || req.Password == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email and password are required")
+	}
+
+	resp, err := h.userUsecase.EmailLogin(c.Context(), req)
+	if err != nil {
+		if errors.Is(err, usecase.ErrUserNotFound) {
+			return fiber.NewError(fiber.StatusNotFound, "User not found")
+		}
+		if errors.Is(err, usecase.ErrInvalidPassword) {
+			return fiber.NewError(fiber.StatusUnauthorized, "Invalid password")
+		}
+		h.log.Error("Login failed", "error", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "Login failed")
+	}
+
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Data:    resp,
+	})
+}
+
+// SendOTP handles POST /auth/login/phone (phone-based OTP login)
+func (h *Handlers) SendOTP(c *fiber.Ctx) error {
+	var req usecase.PhoneLoginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
@@ -170,12 +204,13 @@ func (h *Handlers) Login(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Phone number is required")
 	}
 
-	resp, err := h.userUsecase.Login(c.Context(), req)
+	resp, err := h.userUsecase.SendOTP(c.Context(), req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrUserNotFound) {
 			return fiber.NewError(fiber.StatusNotFound, "User not found")
 		}
-		return fiber.NewError(fiber.StatusInternalServerError, "Login failed")
+		h.log.Error("Send OTP failed", "error", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send OTP")
 	}
 
 	return c.JSON(SuccessResponse{
@@ -198,11 +233,12 @@ func (h *Handlers) VerifyOTP(c *fiber.Ctx) error {
 	resp, err := h.userUsecase.VerifyOTP(c.Context(), req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrInvalidOTP) {
-			return fiber.NewError(fiber.StatusUnauthorized, "Invalid OTP")
+			return fiber.NewError(fiber.StatusUnauthorized, "Invalid or expired OTP")
 		}
 		if errors.Is(err, usecase.ErrUserNotFound) {
 			return fiber.NewError(fiber.StatusNotFound, "User not found")
 		}
+		h.log.Error("OTP verification failed", "error", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Verification failed")
 	}
 

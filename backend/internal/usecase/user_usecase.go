@@ -3,12 +3,15 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"fooddelivery/internal/domain"
 	"fooddelivery/internal/repository"
@@ -17,10 +20,13 @@ import (
 
 // User-related errors
 var (
-	ErrUserExists     = errors.New("user with this phone number already exists")
-	ErrUserNotFound   = errors.New("user not found")
-	ErrInvalidOTP     = errors.New("invalid or expired OTP")
-	ErrUnauthorized   = errors.New("unauthorized")
+	ErrUserExists       = errors.New("user with this email or phone already exists")
+	ErrUserNotFound     = errors.New("user not found")
+	ErrInvalidOTP       = errors.New("invalid or expired OTP")
+	ErrUnauthorized     = errors.New("unauthorized")
+	ErrInvalidPassword  = errors.New("invalid password")
+	ErrWeakPassword     = errors.New("password must be at least 8 characters")
+	ErrInvalidEmail     = errors.New("invalid email address")
 )
 
 // UserUsecase handles user-related business logic
@@ -51,34 +57,58 @@ func (u *UserUsecase) SetJWTConfig(secret string, expiryHours int) {
 type RegisterRequest struct {
 	PhoneNumber string `json:"phone_number"`
 	Name        string `json:"name"`
-	Email       string `json:"email,omitempty"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
 }
 
 // RegisterResponse contains registration result
 type RegisterResponse struct {
 	UserID  uuid.UUID `json:"user_id"`
+	Token   string    `json:"token"`
 	Message string    `json:"message"`
 }
 
-// Register creates a new user account
+// Register creates a new user account with password
 func (u *UserUsecase) Register(ctx context.Context, req RegisterRequest) (*RegisterResponse, error) {
-	// Check if user exists
-	existing, err := u.userRepo.GetByPhoneNumber(ctx, req.PhoneNumber)
-	if err == nil && existing != nil {
+	// Validate password
+	if len(req.Password) < 8 {
+		return nil, ErrWeakPassword
+	}
+
+	// Check if user with email exists
+	existingEmail, err := u.userRepo.GetByEmail(ctx, req.Email)
+	if err == nil && existingEmail != nil {
 		return nil, ErrUserExists
 	}
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
-		return nil, fmt.Errorf("failed to check existing user: %w", err)
+		return nil, fmt.Errorf("failed to check existing email: %w", err)
+	}
+
+	// Check if user with phone exists
+	existingPhone, err := u.userRepo.GetByPhoneNumber(ctx, req.PhoneNumber)
+	if err == nil && existingPhone != nil {
+		return nil, ErrUserExists
+	}
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return nil, fmt.Errorf("failed to check existing phone: %w", err)
+	}
+
+	// Hash password
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	now := time.Now()
 	user := &domain.User{
-		PhoneNumber: req.PhoneNumber,
-		Name:        req.Name,
-		Email:       req.Email,
-		IsAdmin:     false,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		PhoneNumber:   req.PhoneNumber,
+		Name:          req.Name,
+		Email:         req.Email,
+		PasswordHash:  string(passwordHash),
+		EmailVerified: false,
+		IsAdmin:       false,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 
 	if err := u.userRepo.Create(ctx, user); err != nil {
@@ -88,28 +118,41 @@ func (u *UserUsecase) Register(ctx context.Context, req RegisterRequest) (*Regis
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	u.log.Info("User registered", "user_id", user.ID.String(), "phone", req.PhoneNumber)
+	// Generate JWT token
+	expiresAt := time.Now().Add(u.jwtExpiry)
+	token, err := u.generateJWT(user, expiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	u.log.Info("User registered", "user_id", user.ID.String(), "email", req.Email)
 
 	return &RegisterResponse{
 		UserID:  user.ID,
-		Message: "Registration successful. Please verify OTP.",
+		Token:   token,
+		Message: "Registration successful",
 	}, nil
 }
 
-// LoginRequest contains login data
-type LoginRequest struct {
-	PhoneNumber string `json:"phone_number"`
+// EmailLoginRequest contains email/password login data
+type EmailLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-// LoginResponse contains login result
+// LoginResponse contains login result with JWT token
 type LoginResponse struct {
-	UserID  uuid.UUID `json:"user_id"`
-	Message string    `json:"message"`
+	Token     string    `json:"token"`
+	UserID    uuid.UUID `json:"user_id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
-// Login initiates OTP-based login
-func (u *UserUsecase) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
-	user, err := u.userRepo.GetByPhoneNumber(ctx, req.PhoneNumber)
+// EmailLogin performs email/password authentication
+func (u *UserUsecase) EmailLogin(ctx context.Context, req EmailLoginRequest) (*LoginResponse, error) {
+	// Find user by email
+	user, err := u.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrUserNotFound
@@ -117,13 +160,42 @@ func (u *UserUsecase) Login(ctx context.Context, req LoginRequest) (*LoginRespon
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	// In production: Generate and send OTP via SMS service
-	// For now, we simulate OTP generation
-	u.log.Info("OTP requested", "user_id", user.ID.String(), "phone", req.PhoneNumber)
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		return nil, ErrInvalidPassword
+	}
+
+	// Generate JWT token
+	expiresAt := time.Now().Add(u.jwtExpiry)
+	tokenID := uuid.New().String()
+	token, err := u.generateJWTWithID(user, expiresAt, tokenID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	// Create session record
+	session := &domain.Session{
+		UserID:         user.ID,
+		TokenID:        tokenID,
+		ExpiresAt:      expiresAt,
+		IsRevoked:      false,
+		LastActivityAt: time.Now(),
+		CreatedAt:      time.Now(),
+	}
+
+	if err := u.userRepo.CreateSession(ctx, session); err != nil {
+		u.log.Error("Failed to create session", "error", err)
+		// Don't fail login if session creation fails
+	}
+
+	u.log.Info("User logged in via email", "user_id", user.ID.String())
 
 	return &LoginResponse{
-		UserID:  user.ID,
-		Message: "OTP sent to your phone number",
+		Token:     token,
+		UserID:    user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
+		ExpiresAt: expiresAt,
 	}, nil
 }
 
@@ -137,17 +209,37 @@ type VerifyOTPRequest struct {
 type VerifyOTPResponse struct {
 	Token     string    `json:"token"`
 	UserID    uuid.UUID `json:"user_id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
 // VerifyOTP verifies OTP and returns JWT token
 func (u *UserUsecase) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*VerifyOTPResponse, error) {
-	// In production: Verify OTP from cache/database
-	// For demo, accept "123456" as valid OTP
-	if req.OTP != "123456" {
+	// Get valid OTP from database
+	otp, err := u.userRepo.GetValidOTP(ctx, req.PhoneNumber, domain.OTPPurposeLogin)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrInvalidOTP
+		}
+		return nil, fmt.Errorf("failed to get OTP: %w", err)
+	}
+
+	// Verify OTP code
+	if otp.OTPCode != req.OTP {
+		// Increment failed attempts
+		if err := u.userRepo.IncrementOTPAttempts(ctx, otp.ID); err != nil {
+			u.log.Error("Failed to increment OTP attempts", "error", err)
+		}
 		return nil, ErrInvalidOTP
 	}
 
+	// Mark OTP as verified
+	if err := u.userRepo.MarkOTPVerified(ctx, otp.ID); err != nil {
+		u.log.Error("Failed to mark OTP as verified", "error", err)
+	}
+
+	// Get user
 	user, err := u.userRepo.GetByPhoneNumber(ctx, req.PhoneNumber)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -156,18 +248,35 @@ func (u *UserUsecase) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*Ver
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 
-	// Generate JWT token
+	// Generate JWT token with session tracking
 	expiresAt := time.Now().Add(u.jwtExpiry)
-	token, err := u.generateJWT(user, expiresAt)
+	tokenID := uuid.New().String()
+	token, err := u.generateJWTWithID(user, expiresAt, tokenID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	u.log.Info("User logged in", "user_id", user.ID.String())
+	// Create session record
+	session := &domain.Session{
+		UserID:         user.ID,
+		TokenID:        tokenID,
+		ExpiresAt:      expiresAt,
+		IsRevoked:      false,
+		LastActivityAt: time.Now(),
+		CreatedAt:      time.Now(),
+	}
+
+	if err := u.userRepo.CreateSession(ctx, session); err != nil {
+		u.log.Error("Failed to create session", "error", err)
+	}
+
+	u.log.Info("User logged in via OTP", "user_id", user.ID.String())
 
 	return &VerifyOTPResponse{
 		Token:     token,
 		UserID:    user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
 		ExpiresAt: expiresAt,
 	}, nil
 }
@@ -176,6 +285,7 @@ func (u *UserUsecase) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*Ver
 type JWTClaims struct {
 	UserID  uuid.UUID `json:"user_id"`
 	IsAdmin bool      `json:"is_admin"`
+	TokenID string    `json:"jti,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -193,6 +303,85 @@ func (u *UserUsecase) generateJWT(user *domain.User, expiresAt time.Time) (strin
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(u.jwtSecret))
+}
+
+// generateJWTWithID creates a new JWT token with token ID for session tracking
+func (u *UserUsecase) generateJWTWithID(user *domain.User, expiresAt time.Time, tokenID string) (string, error) {
+	claims := JWTClaims{
+		UserID:  user.ID,
+		IsAdmin: user.IsAdmin,
+		TokenID: tokenID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   user.ID.String(),
+			ID:        tokenID,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(u.jwtSecret))
+}
+
+// generateOTP generates a 6-digit OTP
+func generateOTP() (string, error) {
+	max := big.NewInt(1000000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
+}
+
+// PhoneLoginRequest contains phone-based OTP login request
+type PhoneLoginRequest struct {
+	PhoneNumber string `json:"phone_number"`
+}
+
+// SendOTPResponse contains OTP send result
+type SendOTPResponse struct {
+	Message string `json:"message"`
+}
+
+// SendOTP generates and sends OTP to phone number
+func (u *UserUsecase) SendOTP(ctx context.Context, req PhoneLoginRequest) (*SendOTPResponse, error) {
+	// Check if user exists
+	user, err := u.userRepo.GetByPhoneNumber(ctx, req.PhoneNumber)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to find user: %w", err)
+	}
+
+	// Generate OTP
+	otpCode, err := generateOTP()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate OTP: %w", err)
+	}
+
+	// Store OTP in database
+	otp := &domain.OTP{
+		UserID:      &user.ID,
+		PhoneNumber: &req.PhoneNumber,
+		OTPCode:     otpCode,
+		Purpose:     domain.OTPPurposeLogin,
+		ExpiresAt:   time.Now().Add(10 * time.Minute),
+		IsVerified:  false,
+		Attempts:    0,
+		CreatedAt:   time.Now(),
+	}
+
+	if err := u.userRepo.CreateOTP(ctx, otp); err != nil {
+		return nil, fmt.Errorf("failed to store OTP: %w", err)
+	}
+
+	// In production: Send OTP via SMS service (Twilio, AWS SNS, etc.)
+	u.log.Info("OTP generated", "user_id", user.ID.String(), "phone", req.PhoneNumber, "otp", otpCode)
+
+	return &SendOTPResponse{
+		Message: "OTP sent to your phone number",
+	}, nil
 }
 
 // ValidateToken validates JWT token and returns claims

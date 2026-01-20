@@ -5,6 +5,9 @@ import 'screens/menu_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/checkout_screen.dart';
 import 'screens/order_confirmation_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
+import 'providers/auth_provider.dart';
 import 'services/logger_service.dart';
 
 void main() {
@@ -24,11 +27,11 @@ void main() {
 }
 
 /// Main application widget
-class FoodDeliveryApp extends StatelessWidget {
+class FoodDeliveryApp extends ConsumerWidget {
   const FoodDeliveryApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     LoggerService.debug('[FoodDeliveryApp] build() called');
     
     return MaterialApp(
@@ -50,7 +53,7 @@ class FoodDeliveryApp extends StatelessWidget {
           backgroundColor: Colors.black,
           surfaceTintColor: Colors.transparent,
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E1E1E),
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -59,12 +62,22 @@ class FoodDeliveryApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/',
+      home: const AuthAwareHome(),
       onGenerateRoute: (settings) {
         LoggerService.info('[Router] Navigating to: ${settings.name}');
         
         switch (settings.name) {
-          case '/':
+          case '/login':
+            return MaterialPageRoute(
+              builder: (context) => const LoginScreen(),
+              settings: settings,
+            );
+          case '/signup':
+            return MaterialPageRoute(
+              builder: (context) => const SignupScreen(),
+              settings: settings,
+            );
+          case '/menu':
             return MaterialPageRoute(
               builder: (context) => const MenuScreen(),
               settings: settings,
@@ -93,5 +106,29 @@ class FoodDeliveryApp extends StatelessWidget {
         }
       },
     );
+  }
+}
+
+/// Authentication-aware home widget
+/// Shows menu if authenticated, login screen otherwise
+class AuthAwareHome extends ConsumerWidget {
+  const AuthAwareHome({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    
+    // Show login screen if not authenticated
+    // Show menu screen if authenticated
+    if (authState.isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.orange),
+        ),
+      );
+    }
+    
+    return authState.isAuthenticated ? const MenuScreen() : const LoginScreen();
   }
 }

@@ -142,17 +142,70 @@ class ApiService {
     }
   }
 
-  /// Login with phone number (initiates OTP)
-  Future<void> login(String phoneNumber) async {
-    final body = jsonEncode({'phone_number': phoneNumber});
+  /// Register new user with email and password
+  Future<AuthResponse> register({
+    required String email,
+    required String password,
+    required String name,
+    required String phoneNumber,
+  }) async {
+    final body = jsonEncode({
+      'email': email,
+      'password': password,
+      'name': name,
+      'phone_number': phoneNumber,
+    });
 
     final response = await http.post(
-      Uri.parse('$baseUrl/api/v1/auth/login'),
+      Uri.parse('$baseUrl/api/v1/auth/register'),
       headers: _headers,
       body: body,
     );
 
-    if (response.statusCode != 200) {
+    if (response.statusCode == 201) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final resultData = data['data'] as Map<String, dynamic>;
+      return AuthResponse(
+        token: resultData['token'] as String,
+        userId: resultData['user_id'] as String,
+        name: name,
+        email: email,
+      );
+    } else {
+      final error = jsonDecode(response.body) as Map<String, dynamic>;
+      throw ApiException(
+        error['error'] as String? ?? 'Registration failed',
+        response.statusCode,
+      );
+    }
+  }
+
+  /// Login with email and password
+  Future<AuthResponse> emailLogin({
+    required String email,
+    required String password,
+  }) async {
+    final body = jsonEncode({
+      'email': email,
+      'password': password,
+    });
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/v1/auth/login/email'),
+      headers: _headers,
+      body: body,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final resultData = data['data'] as Map<String, dynamic>;
+      return AuthResponse(
+        token: resultData['token'] as String,
+        userId: resultData['user_id'] as String,
+        name: resultData['name'] as String,
+        email: resultData['email'] as String,
+      );
+    } else {
       final error = jsonDecode(response.body) as Map<String, dynamic>;
       throw ApiException(
         error['error'] as String? ?? 'Login failed',
@@ -161,8 +214,27 @@ class ApiService {
     }
   }
 
+  /// Send OTP to phone number for login
+  Future<void> sendOTP(String phoneNumber) async {
+    final body = jsonEncode({'phone_number': phoneNumber});
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/v1/auth/login/phone'),
+      headers: _headers,
+      body: body,
+    );
+
+    if (response.statusCode != 200) {
+      final error = jsonDecode(response.body) as Map<String, dynamic>;
+      throw ApiException(
+        error['error'] as String? ?? 'Failed to send OTP',
+        response.statusCode,
+      );
+    }
+  }
+
   /// Verify OTP and get auth token
-  Future<AuthResult> verifyOTP(String phoneNumber, String otp) async {
+  Future<AuthResponse> verifyOTP(String phoneNumber, String otp) async {
     final body = jsonEncode({
       'phone_number': phoneNumber,
       'otp': otp,
@@ -177,42 +249,16 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final resultData = data['data'] as Map<String, dynamic>;
-      return AuthResult(
+      return AuthResponse(
         token: resultData['token'] as String,
         userId: resultData['user_id'] as String,
-        expiresAt: DateTime.parse(resultData['expires_at'] as String),
+        name: resultData['name'] as String,
+        email: resultData['email'] as String,
       );
     } else {
       final error = jsonDecode(response.body) as Map<String, dynamic>;
       throw ApiException(
         error['error'] as String? ?? 'OTP verification failed',
-        response.statusCode,
-      );
-    }
-  }
-
-  /// Register new user
-  Future<void> register({
-    required String phoneNumber,
-    required String name,
-    String? email,
-  }) async {
-    final body = jsonEncode({
-      'phone_number': phoneNumber,
-      'name': name,
-      if (email != null) 'email': email,
-    });
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/v1/auth/register'),
-      headers: _headers,
-      body: body,
-    );
-
-    if (response.statusCode != 201) {
-      final error = jsonDecode(response.body) as Map<String, dynamic>;
-      throw ApiException(
-        error['error'] as String? ?? 'Registration failed',
         response.statusCode,
       );
     }
@@ -246,15 +292,17 @@ class PaymentVerificationResult {
 }
 
 /// Result of authentication
-class AuthResult {
+class AuthResponse {
   final String token;
   final String userId;
-  final DateTime expiresAt;
+  final String name;
+  final String email;
 
-  const AuthResult({
+  const AuthResponse({
     required this.token,
     required this.userId,
-    required this.expiresAt,
+    required this.name,
+    required this.email,
   });
 }
 
