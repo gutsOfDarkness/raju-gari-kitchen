@@ -60,6 +60,7 @@ func main() {
 	// Initialize usecases (Business Logic Layer)
 	menuUsecase := usecase.NewMenuUsecase(menuRepo, redisClient, log)
 	paymentUsecase := usecase.NewPaymentUsecase(orderRepo, menuRepo, cfg.Razorpay, log)
+	paymentUsecase.SetRedisClient(redisClient) // Set redis for idempotency
 	orderUsecase := usecase.NewOrderUsecase(orderRepo, paymentUsecase, log)
 	userUsecase := usecase.NewUserUsecase(userRepo, log)
 	

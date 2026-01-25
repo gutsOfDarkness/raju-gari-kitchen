@@ -75,11 +75,12 @@ type InitiateOrderRequest struct {
 
 // InitiateOrderResponse contains the Razorpay order details for client
 type InitiateOrderResponse struct {
-	OrderID         uuid.UUID `json:"order_id"`
+	ID              uuid.UUID `json:"id"`
 	RazorpayOrderID string    `json:"razorpay_order_id"`
-	RazorpayKeyID   string    `json:"razorpay_key_id"`
-	Amount          int64     `json:"amount"`        // Amount in paisa
+	KeyID           string    `json:"key_id"`
+	Amount          int64     `json:"amount"` // Amount in paisa
 	Currency        string    `json:"currency"`
+	Receipt         string    `json:"receipt"`
 	Name            string    `json:"name"`
 	Description     string    `json:"description"`
 }
@@ -208,11 +209,12 @@ func (u *PaymentUsecase) InitiateOrder(ctx context.Context, req InitiateOrderReq
 	log.Info("Order created successfully", "razorpay_order_id", razorpayOrderID)
 
 	response := &InitiateOrderResponse{
-		OrderID:         order.ID,
+		ID:              order.ID,
 		RazorpayOrderID: razorpayOrderID,
-		RazorpayKeyID:   u.config.KeyID,
+		KeyID:           u.config.KeyID,
 		Amount:          totalAmount,
 		Currency:        "INR",
+		Receipt:         order.ID.String(),
 		Name:            "Food Delivery",
 		Description:     fmt.Sprintf("Order #%s", order.ID.String()[:8]),
 	}

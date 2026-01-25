@@ -170,6 +170,7 @@ class ApiService {
         userId: resultData['user_id'] as String,
         name: name,
         email: email,
+        phoneNumber: phoneNumber,
       );
     } else {
       final error = jsonDecode(response.body) as Map<String, dynamic>;
@@ -204,6 +205,7 @@ class ApiService {
         userId: resultData['user_id'] as String,
         name: resultData['name'] as String,
         email: resultData['email'] as String,
+        phoneNumber: resultData['phone_number'] as String,
       );
     } else {
       final error = jsonDecode(response.body) as Map<String, dynamic>;
@@ -254,6 +256,7 @@ class ApiService {
         userId: resultData['user_id'] as String,
         name: resultData['name'] as String,
         email: resultData['email'] as String,
+        phoneNumber: resultData['phone_number'] as String,
       );
     } else {
       final error = jsonDecode(response.body) as Map<String, dynamic>;
@@ -297,41 +300,13 @@ class AuthResponse {
   final String userId;
   final String name;
   final String email;
+  final String phoneNumber;
 
   const AuthResponse({
     required this.token,
     required this.userId,
     required this.name,
     required this.email,
+    required this.phoneNumber,
   });
-}
-
-/// Response from create order API
-class CreateOrderResponse {
-  final String backendOrderId;
-  final String razorpayOrderId;
-  final String keyId;
-  final int amount;
-  final String currency;
-  final String receipt;
-
-  CreateOrderResponse({
-    required this.backendOrderId,
-    required this.razorpayOrderId,
-    required this.keyId,
-    required this.amount,
-    required this.currency,
-    required this.receipt,
-  });
-
-  factory CreateOrderResponse.fromJson(Map<String, dynamic> json) {
-    return CreateOrderResponse(
-      backendOrderId: json['id'] as String,
-      razorpayOrderId: json['razorpay_order_id'] as String,
-      keyId: json['key_id'] as String,
-      amount: json['amount'] as int,
-      currency: json['currency'] as String,
-      receipt: json['receipt'] as String,
-    );
-  }
 }

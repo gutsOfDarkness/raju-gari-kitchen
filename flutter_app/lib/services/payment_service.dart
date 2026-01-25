@@ -34,7 +34,7 @@ class PaymentService {
   }) async {
     _onSuccess = onSuccess;
     _onFailure = onFailure;
-    currentOrderId = orderDetails.backendOrderId;
+    currentOrderId = orderDetails.id;
 
     var options = {
       'key': orderDetails.keyId,

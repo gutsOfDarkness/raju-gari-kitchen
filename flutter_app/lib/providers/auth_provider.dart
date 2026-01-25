@@ -10,6 +10,7 @@ class AuthState {
   final String? userId;
   final String? name;
   final String? email;
+  final String? phoneNumber;
   final bool isLoading;
   final String? error;
 
@@ -19,6 +20,7 @@ class AuthState {
     this.userId,
     this.name,
     this.email,
+    this.phoneNumber,
     this.isLoading = false,
     this.error,
   });
@@ -29,6 +31,7 @@ class AuthState {
     String? userId,
     String? name,
     String? email,
+    String? phoneNumber,
     bool? isLoading,
     String? error,
   }) {
@@ -38,6 +41,7 @@ class AuthState {
       userId: userId ?? this.userId,
       name: name ?? this.name,
       email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -60,6 +64,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final userId = prefs.getString('user_id');
       final name = prefs.getString('user_name');
       final email = prefs.getString('user_email');
+      final phoneNumber = prefs.getString('user_phone');
 
       if (token != null && userId != null) {
         apiService.setAuthToken(token);
@@ -69,6 +74,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           userId: userId,
           name: name,
           email: email,
+          phoneNumber: phoneNumber,
         );
       }
     } catch (e) {
@@ -82,6 +88,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String userId,
     required String name,
     required String email,
+    required String phoneNumber,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -89,6 +96,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await prefs.setString('user_id', userId);
       await prefs.setString('user_name', name);
       await prefs.setString('user_email', email);
+      await prefs.setString('user_phone', phoneNumber);
     } catch (e) {
       debugPrint('Failed to save auth: $e');
     }
@@ -102,6 +110,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await prefs.remove('user_id');
       await prefs.remove('user_name');
       await prefs.remove('user_email');
+      await prefs.remove('user_phone');
     } catch (e) {
       debugPrint('Failed to clear auth: $e');
     }
@@ -129,6 +138,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: response.userId,
         name: response.name,
         email: response.email,
+        phoneNumber: response.phoneNumber,
       );
 
       state = AuthState(
@@ -137,6 +147,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: response.userId,
         name: response.name,
         email: response.email,
+        phoneNumber: response.phoneNumber,
       );
     } on ApiException catch (e) {
       state = state.copyWith(isLoading: false, error: e.message);
@@ -168,6 +179,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: response.userId,
         name: response.name,
         email: response.email,
+        phoneNumber: response.phoneNumber,
       );
 
       state = AuthState(
@@ -176,6 +188,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: response.userId,
         name: response.name,
         email: response.email,
+        phoneNumber: response.phoneNumber,
       );
     } on ApiException catch (e) {
       state = state.copyWith(isLoading: false, error: e.message);
@@ -222,6 +235,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: response.userId,
         name: response.name,
         email: response.email,
+        phoneNumber: response.phoneNumber,
       );
 
       state = AuthState(
@@ -230,6 +244,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: response.userId,
         name: response.name,
         email: response.email,
+        phoneNumber: response.phoneNumber,
       );
     } on ApiException catch (e) {
       state = state.copyWith(isLoading: false, error: e.message);

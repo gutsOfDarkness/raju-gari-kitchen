@@ -63,9 +63,21 @@ type RegisterRequest struct {
 
 // RegisterResponse contains registration result
 type RegisterResponse struct {
-	UserID  uuid.UUID `json:"user_id"`
-	Token   string    `json:"token"`
-	Message string    `json:"message"`
+	UserID      uuid.UUID `json:"user_id"`
+	Token       string    `json:"token"`
+	Name        string    `json:"name"`
+	Email       string    `json:"email"`
+	PhoneNumber string    `json:"phone_number"`
+	Message     string    `json:"message"`
+}
+
+// Register creates a new user account with password
+func (u *UserUsecase) Register(ctx context.Context, req RegisterRequest) (*RegisterResponse, error) {
+	// ... (validations)
+	// (hashing)
+	// (user creation)
+	
+	// I'll need to re-read carefully to not mess up the edit.
 }
 
 // Register creates a new user account with password
@@ -128,9 +140,12 @@ func (u *UserUsecase) Register(ctx context.Context, req RegisterRequest) (*Regis
 	u.log.Info("User registered", "user_id", user.ID.String(), "email", req.Email)
 
 	return &RegisterResponse{
-		UserID:  user.ID,
-		Token:   token,
-		Message: "Registration successful",
+		UserID:      user.ID,
+		Token:       token,
+		Name:        user.Name,
+		Email:       user.Email,
+		PhoneNumber: user.PhoneNumber,
+		Message:     "Registration successful",
 	}, nil
 }
 
@@ -142,12 +157,30 @@ type EmailLoginRequest struct {
 
 // LoginResponse contains login result with JWT token
 type LoginResponse struct {
-	Token     string    `json:"token"`
-	UserID    uuid.UUID `json:"user_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	ExpiresAt time.Time `json:"expires_at"`
+	Token       string    `json:"token"`
+	UserID      uuid.UUID `json:"user_id"`
+	Name        string    `json:"name"`
+	Email       string    `json:"email"`
+	PhoneNumber string    `json:"phone_number"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
+
+// EmailLogin performs email/password authentication
+func (u *UserUsecase) EmailLogin(ctx context.Context, req EmailLoginRequest) (*LoginResponse, error) {
+	// ... (implementation)
+	
+	u.log.Info("User logged in via email", "user_id", user.ID.String())
+
+	return &LoginResponse{
+		Token:       token,
+		UserID:      user.ID,
+		Name:        user.Name,
+		Email:       user.Email,
+		PhoneNumber: user.PhoneNumber,
+		ExpiresAt:   expiresAt,
+	}, nil
+}
+
 
 // EmailLogin performs email/password authentication
 func (u *UserUsecase) EmailLogin(ctx context.Context, req EmailLoginRequest) (*LoginResponse, error) {
@@ -207,12 +240,30 @@ type VerifyOTPRequest struct {
 
 // VerifyOTPResponse contains verification result with JWT token
 type VerifyOTPResponse struct {
-	Token     string    `json:"token"`
-	UserID    uuid.UUID `json:"user_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	ExpiresAt time.Time `json:"expires_at"`
+	Token       string    `json:"token"`
+	UserID      uuid.UUID `json:"user_id"`
+	Name        string    `json:"name"`
+	Email       string    `json:"email"`
+	PhoneNumber string    `json:"phone_number"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
+
+// VerifyOTP verifies OTP and returns JWT token
+func (u *UserUsecase) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*VerifyOTPResponse, error) {
+	// ... (implementation)
+	
+	u.log.Info("User logged in via OTP", "user_id", user.ID.String())
+
+	return &VerifyOTPResponse{
+		Token:       token,
+		UserID:      user.ID,
+		Name:        user.Name,
+		Email:       user.Email,
+		PhoneNumber: user.PhoneNumber,
+		ExpiresAt:   expiresAt,
+	}, nil
+}
+
 
 // VerifyOTP verifies OTP and returns JWT token
 func (u *UserUsecase) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*VerifyOTPResponse, error) {

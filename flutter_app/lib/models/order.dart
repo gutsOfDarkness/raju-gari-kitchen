@@ -97,31 +97,34 @@ class OrderItem {
 
 /// Response from order creation (for Razorpay checkout)
 class CreateOrderResponse {
-  final String orderId;
+  final String id;
   final String razorpayOrderId;
-  final String razorpayKeyId;
+  final String keyId;
   final int amount;
   final String currency;
+  final String receipt;
   final String name;
   final String description;
 
   const CreateOrderResponse({
-    required this.orderId,
+    required this.id,
     required this.razorpayOrderId,
-    required this.razorpayKeyId,
+    required this.keyId,
     required this.amount,
     required this.currency,
+    required this.receipt,
     required this.name,
     required this.description,
   });
 
   factory CreateOrderResponse.fromJson(Map<String, dynamic> json) {
     return CreateOrderResponse(
-      orderId: json['order_id'] as String,
+      id: json['id'] as String,
       razorpayOrderId: json['razorpay_order_id'] as String,
-      razorpayKeyId: json['razorpay_key_id'] as String,
+      keyId: json['key_id'] as String,
       amount: json['amount'] as int,
       currency: json['currency'] as String,
+      receipt: json['receipt'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
     );

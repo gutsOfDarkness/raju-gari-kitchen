@@ -48,29 +48,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     try {
       // Step 1: Create order on backend
       final apiService = ref.read(apiServiceProvider);
+      final authState = ref.read(authProvider);
       final orderResponse = await apiService.createOrder(cartState.items);
 
       // Step 2: Start Razorpay payment flow
       await _paymentService.startPayment(
         orderDetails: orderResponse,
-        userPhone: '9999999999', // Get from user profile
-        userEmail: 'user@example.com', // Get from user profile
+        userPhone: authState.phoneNumber ?? '',
+        userEmail: authState.email ?? '',
         onSuccess: _handlePaymentSuccess,
         onFailure: _handlePaymentFailure,
       );
-    } on ApiException catch (e) {
-      setState(() {
-        _error = e.message;
-        _isProcessing = false;
-      });
-      _showSnackBar(e.message, isError: true);
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to create order. Please try again.';
-        _isProcessing = false;
-      });
-      _showSnackBar(_error!, isError: true);
     }
+
   }
 
   /// Handle Razorpay success callback.
@@ -211,30 +201,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   ),
                   
                   const SizedBox(height: 32),
-                  
-                  // Disclaimer
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.orange),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Disclaimer: Payment gateway is yet to be configured. This is a demo flow.',
-                            style: TextStyle(color: Colors.orangeAccent),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                   const SizedBox(height: 32),
                    
                    // Order Summary Brief
                    Text(
