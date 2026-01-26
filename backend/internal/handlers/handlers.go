@@ -4,7 +4,6 @@ package handlers
 
 import (
 	"errors"
-	"io"
 	"strings"
 	"time"
 
@@ -540,22 +539,31 @@ func (h *Handlers) RazorpayWebhook(c *fiber.Ctx) error {
 	signature := c.Get("X-Razorpay-Signature")
 	if signature == "" {
 		h.log.Warn("Webhook received without signature")
-		return fiber.NewError(fiber.StatusBadRequest, "Missing signature")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Missing signature",
+		})
 	}
 
-	body, err := io.ReadAll(c.Request().BodyStream())
-	if err != nil {
-		h.log.Error("Failed to read webhook body", "error", err)
-		return fiber.NewError(fiber.StatusBadRequest, "Failed to read body")
+	body := c.Body()
+	if len(body) == 0 {
+		h.log.Warn("Webhook received with empty body")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Empty body",
+		})
 	}
 
 	if err := h.paymentUsecase.HandleWebhook(c.Context(), body, signature); err != nil {
 		if errors.Is(err, usecase.ErrInvalidSignature) {
-			return fiber.NewError(fiber.StatusUnauthorized, "Invalid signature")
+			h.log.Warn("Webhook invalid signature", "signature", signature)
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "Invalid signature",
+			})
 		}
 		h.log.Error("Webhook processing failed", "error", err)
-		return fiber.NewError(fiber.StatusInternalServerError, "Webhook processing failed")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Webhook processing failed",
+		})
 	}
 
-	return c.JSON(fiber.Map{"status": "ok"})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "ok"})
 }

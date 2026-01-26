@@ -386,6 +386,7 @@ func (u *PaymentUsecase) HandleWebhook(ctx context.Context, payload []byte, sign
 	}
 
 	log.Info("Processing webhook event")
+	log.Debug("Incoming webhook payload", "payload", string(payload))
 
 	// Handle different event types
 	switch webhookData.Event {
