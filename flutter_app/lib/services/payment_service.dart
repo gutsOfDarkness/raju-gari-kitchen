@@ -1,6 +1,7 @@
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../services/api_service.dart';
 import '../services/logger_service.dart';
+import '../models/order.dart';
 
 export 'package:razorpay_flutter/razorpay_flutter.dart';
 
@@ -52,7 +53,7 @@ class PaymentService {
     };
 
     try {
-      LoggerService.info('[PaymentService] Opening Razorpay for Order ${orderDetails.backendOrderId}');
+      LoggerService.info('[PaymentService] Opening Razorpay for Order ${orderDetails.id}');
       _razorpay.open(options);
     } catch (e) {
       LoggerService.error('[PaymentService] Error starting payment', e);

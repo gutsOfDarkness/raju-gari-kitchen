@@ -4,6 +4,7 @@ import '../providers/cart_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/payment_service.dart';
 import '../services/api_service.dart';
+import '../models/order.dart';
 
 /// Checkout screen handling order creation and payment flow.
 /// Implements proper Razorpay integration with backend verification.
@@ -59,6 +60,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         onSuccess: _handlePaymentSuccess,
         onFailure: _handlePaymentFailure,
       );
+    } catch (e) {
+      setState(() {
+        _isProcessing = false;
+        _error = 'Failed to initiate checkout: $e';
+      });
+      _showSnackBar(_error!, isError: true);
     }
 
   }
