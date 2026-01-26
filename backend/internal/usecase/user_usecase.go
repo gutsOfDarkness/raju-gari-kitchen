@@ -73,15 +73,6 @@ type RegisterResponse struct {
 
 // Register creates a new user account with password
 func (u *UserUsecase) Register(ctx context.Context, req RegisterRequest) (*RegisterResponse, error) {
-	// ... (validations)
-	// (hashing)
-	// (user creation)
-	
-	// I'll need to re-read carefully to not mess up the edit.
-}
-
-// Register creates a new user account with password
-func (u *UserUsecase) Register(ctx context.Context, req RegisterRequest) (*RegisterResponse, error) {
 	// Validate password
 	if len(req.Password) < 8 {
 		return nil, ErrWeakPassword
@@ -167,23 +158,6 @@ type LoginResponse struct {
 
 // EmailLogin performs email/password authentication
 func (u *UserUsecase) EmailLogin(ctx context.Context, req EmailLoginRequest) (*LoginResponse, error) {
-	// ... (implementation)
-	
-	u.log.Info("User logged in via email", "user_id", user.ID.String())
-
-	return &LoginResponse{
-		Token:       token,
-		UserID:      user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		PhoneNumber: user.PhoneNumber,
-		ExpiresAt:   expiresAt,
-	}, nil
-}
-
-
-// EmailLogin performs email/password authentication
-func (u *UserUsecase) EmailLogin(ctx context.Context, req EmailLoginRequest) (*LoginResponse, error) {
 	// Find user by email
 	user, err := u.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
@@ -247,23 +221,6 @@ type VerifyOTPResponse struct {
 	PhoneNumber string    `json:"phone_number"`
 	ExpiresAt   time.Time `json:"expires_at"`
 }
-
-// VerifyOTP verifies OTP and returns JWT token
-func (u *UserUsecase) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*VerifyOTPResponse, error) {
-	// ... (implementation)
-	
-	u.log.Info("User logged in via OTP", "user_id", user.ID.String())
-
-	return &VerifyOTPResponse{
-		Token:       token,
-		UserID:      user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		PhoneNumber: user.PhoneNumber,
-		ExpiresAt:   expiresAt,
-	}, nil
-}
-
 
 // VerifyOTP verifies OTP and returns JWT token
 func (u *UserUsecase) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*VerifyOTPResponse, error) {
